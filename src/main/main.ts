@@ -2,7 +2,7 @@ import path from 'node:path';
 import { app, ipcMain, Menu, BrowserWindow } from 'electron';
 import started from 'electron-squirrel-startup';
 import { BrowserController } from './browser/BrowserController';
-import { IPC_CHANNELS, NavCommand } from '../common/ipc';
+import { IPC_CHANNELS, NavCommand, TabCommand, UIFrame } from '../common/ipc';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -64,24 +64,17 @@ app.on('activate', () => {
 });
 
 ipcMain.handle(IPC_CHANNELS.command, (_evt, cmd: NavCommand) => {
-  switch (cmd.type) {
-    case 'loadURL':
-      controller.navigate(cmd.urlOrQuery);
-      break;
-    case 'goBack':
-      controller.goBack();
-      break;
-    case 'goForward':
-      controller.goForward();
-      break;
-    case 'reload':
-      controller.reload();
-      break;
-    case 'stop':
-      controller.stop();
-      break;
-    case 'setTopChromeHeight':
-      controller.setTopChromeHeight(cmd.height);
-      break;
+  if (cmd.type === 'setTopChromeHeight') {
+    // Legacy command - ignore for now since we use ui:set-frame
+    return;
   }
+  controller.handleNavCommand(cmd);
+});
+
+ipcMain.handle(IPC_CHANNELS.tabCommand, (_evt, cmd: TabCommand) => {
+  controller.handleTabCommand(cmd);
+});
+
+ipcMain.handle(IPC_CHANNELS.uiSetFrame, (_evt, frame: UIFrame) => {
+  controller.handleUISetFrame(frame);
 });

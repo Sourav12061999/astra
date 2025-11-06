@@ -1,6 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
 import Toolbar from './components/Toolbar';
+import Sidebar from './components/Sidebar';
 import './styles/app.css';
+import './styles/sidebar.css';
+import { TabState } from './common/ipc';
+
+const TOOLBAR_HEIGHT = 49;
+const SIDEBAR_WIDTH = 240;
 
 export default function App() {
   const [navState, setNavState] = useState({
@@ -10,6 +16,11 @@ export default function App() {
     canGoBack: false,
     canGoForward: false,
     isSecure: false
+  });
+  const [tabsState, setTabsState] = useState<TabState>({
+    tabs: [],
+    activeId: null,
+    order: []
   });
   const [inputValue, setInputValue] = useState('');
   const toolbarRef = useRef<HTMLDivElement>(null);
@@ -21,26 +32,25 @@ export default function App() {
       return;
     }
 
-    const unsubscribe = window.api.onNavState((state) => {
+    const unsubscribeNav = window.api.nav.onState((state) => {
       setNavState(state);
-      // Always update input value with current URL
-      // Only skip if user is actively typing (we'll handle this differently)
       setInputValue(state.url);
-      console.log('Nav state updated:', state);
     });
 
-    // Measure and report toolbar height
-    const reportHeight = () => {
-      if (toolbarRef.current) {
-        const height = toolbarRef.current.offsetHeight;
-        console.log('Reporting toolbar height:', height);
-        window.api.nav.setTopChromeHeight(height);
-      }
+    const unsubscribeTabs = window.api.tabs.onState((state) => {
+      setTabsState(state);
+    });
+
+    // Report UI frame dimensions
+    const reportFrame = () => {
+      window.api.ui.setFrame({
+        top: TOOLBAR_HEIGHT,
+        left: SIDEBAR_WIDTH
+      });
     };
     
-    // Use setTimeout to ensure DOM has rendered and has correct height
-    setTimeout(reportHeight, 0);
-    window.addEventListener('resize', reportHeight);
+    setTimeout(reportFrame, 0);
+    window.addEventListener('resize', reportFrame);
 
     // Focus omnibox on mount
     setTimeout(() => {
@@ -52,53 +62,131 @@ export default function App() {
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
       const cmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
 
+      // Cmd/Ctrl + T: New tab
+      if (cmdOrCtrl && e.key === 't') {
+        e.preventDefault();
+        window.api.tabs.create();
+        return;
+      }
+
+      // Cmd/Ctrl + W: Close tab
+      if (cmdOrCtrl && e.key === 'w') {
+        e.preventDefault();
+        if (tabsState.activeId) {
+          window.api.tabs.close(tabsState.activeId);
+        }
+        return;
+      }
+
+      // Cmd/Ctrl + Tab: Next tab
+      if (cmdOrCtrl && e.key === 'Tab' && !e.shiftKey) {
+        e.preventDefault();
+        window.api.tabs.next();
+        return;
+      }
+
+      // Cmd/Ctrl + Shift + Tab: Previous tab
+      if (cmdOrCtrl && e.key === 'Tab' && e.shiftKey) {
+        e.preventDefault();
+        window.api.tabs.prev();
+        return;
+      }
+
+      // Cmd/Ctrl + Shift + [ or ]: Previous/Next tab
+      if (cmdOrCtrl && e.shiftKey && e.key === '[') {
+        e.preventDefault();
+        window.api.tabs.prev();
+        return;
+      }
+      if (cmdOrCtrl && e.shiftKey && e.key === ']') {
+        e.preventDefault();
+        window.api.tabs.next();
+        return;
+      }
+
+      // Cmd/Ctrl + 1-9: Switch to tab by index
+      if (cmdOrCtrl && e.key >= '1' && e.key <= '9') {
+        e.preventDefault();
+        const index = parseInt(e.key) - 1;
+        window.api.tabs.switchToIndex(index);
+        return;
+      }
+
       // Cmd/Ctrl + L: Focus omnibox
       if (cmdOrCtrl && e.key === 'l') {
         e.preventDefault();
         (window as any).focusOmnibox?.();
+        return;
       }
 
       // Cmd/Ctrl + R: Reload
       if (cmdOrCtrl && e.key === 'r') {
         e.preventDefault();
         window.api.nav.reload();
+        return;
       }
 
       // Escape: Stop loading
       if (e.key === 'Escape' && navState.isLoading) {
         window.api.nav.stop();
+        return;
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      unsubscribe();
-      window.removeEventListener('resize', reportHeight);
+      unsubscribeNav();
+      unsubscribeTabs();
+      window.removeEventListener('resize', reportFrame);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [navState.isLoading]);
+  }, [navState.isLoading, tabsState.activeId]);
 
   const handleSubmit = () => {
     window.api.nav.loadURL(inputValue);
   };
 
+  const handleCreateTab = () => {
+    window.api.tabs.create();
+  };
+
+  const handleSwitchTab = (tabId: string) => {
+    window.api.tabs.switch(tabId);
+  };
+
+  const handleCloseTab = (tabId: string) => {
+    window.api.tabs.close(tabId);
+  };
+
   return (
-    <div ref={toolbarRef}>
-      <Toolbar
-        url={navState.url}
-        isLoading={navState.isLoading}
-        canGoBack={navState.canGoBack}
-        canGoForward={navState.canGoForward}
-        isSecure={navState.isSecure}
-        inputValue={inputValue}
-        onInputChange={setInputValue}
-        onSubmit={handleSubmit}
-        onBack={() => window.api.nav.goBack()}
-        onForward={() => window.api.nav.goForward()}
-        onReload={() => window.api.nav.reload()}
-        onStop={() => window.api.nav.stop()}
+    <>
+      <Sidebar
+        tabs={tabsState.tabs}
+        activeId={tabsState.activeId}
+        onCreate={handleCreateTab}
+        onSelect={handleSwitchTab}
+        onClose={handleCloseTab}
       />
-    </div>
+      
+      <div className="app-main">
+        <div ref={toolbarRef}>
+          <Toolbar
+            url={navState.url}
+            isLoading={navState.isLoading}
+            canGoBack={navState.canGoBack}
+            canGoForward={navState.canGoForward}
+            isSecure={navState.isSecure}
+            inputValue={inputValue}
+            onInputChange={setInputValue}
+            onSubmit={handleSubmit}
+            onBack={() => window.api.nav.goBack()}
+            onForward={() => window.api.nav.goForward()}
+            onReload={() => window.api.nav.reload()}
+            onStop={() => window.api.nav.stop()}
+          />
+        </div>
+      </div>
+    </>
   );
 }

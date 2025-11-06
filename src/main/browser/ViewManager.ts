@@ -1,39 +1,55 @@
 import { BrowserWindow, WebContentsView } from 'electron';
 
 export type ViewBounds = { x: number; y: number; width: number; height: number };
+export type ViewFrame = { top: number; left: number };
 
 export class ViewManager {
-  private win: BrowserWindow;
   private view: WebContentsView;
-  private bounds: ViewBounds = { x: 0, y: 48, width: 0, height: 0 };
+  private frame: ViewFrame = { top: 48, left: 0 };
   private isAttached = false;
 
-  constructor(win: BrowserWindow, view: WebContentsView) {
-    this.win = win;
+  constructor(view: WebContentsView) {
     this.view = view;
-    // Add the view but with proper initial positioning
-    this.win.contentView.addChildView(this.view);
-    this.isAttached = true;
-    // Set initial layout to position view below toolbar area
-    this.layout();
   }
 
-  setTopInset(px: number) {
-    console.log('ViewManager setTopInset called with:', px);
-    this.bounds.y = Math.max(0, Math.floor(px));
-    this.layout();
+  setFrame(frame: ViewFrame) {
+    this.frame = frame;
   }
 
-  layout() {
-    const { width, height } = this.win.getContentBounds();
-    this.bounds.width = width;
-    this.bounds.height = Math.max(0, height - this.bounds.y);
-    console.log('Setting view bounds:', JSON.stringify(this.bounds));
-    console.log('Window content bounds:', JSON.stringify({ width, height }));
-    this.view.setBounds(this.bounds);
+  attach(win: BrowserWindow) {
+    if (!this.isAttached) {
+      win.contentView.addChildView(this.view);
+      this.isAttached = true;
+      this.applyLayout(win);
+    }
+  }
+
+  detach(win: BrowserWindow) {
+    if (this.isAttached) {
+      win.contentView.removeChildView(this.view);
+      this.isAttached = false;
+    }
+  }
+
+  applyLayout(win: BrowserWindow) {
+    if (!this.isAttached) return;
+    
+    const { width, height } = win.getContentBounds();
+    const bounds: ViewBounds = {
+      x: this.frame.left,
+      y: this.frame.top,
+      width: Math.max(0, width - this.frame.left),
+      height: Math.max(0, height - this.frame.top)
+    };
+    
+    this.view.setBounds(bounds);
   }
 
   getWebContents() {
     return this.view.webContents;
+  }
+
+  getView() {
+    return this.view;
   }
 }

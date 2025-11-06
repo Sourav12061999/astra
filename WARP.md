@@ -73,13 +73,124 @@ Communication between main process and renderer uses a clean IPC contract define
 - **Window open handler**: Opens `target="_blank"` and `window.open()` links in OS default browser
 - **Preload script**: Exposes only necessary IPC methods via `contextBridge`, no Node.js APIs
 
-### Multi-Tab Readiness
+## Multi-Tab Architecture
 
-The current architecture is designed for easy multi-tab extension:
+### Overview
 
-1. **ViewManager abstraction**: Each tab would have its own ViewManager instance
-2. **Tab model**: Add a Tab class with id, WebContentsView, and ViewManager
-3. **Controller**: Maintain a map of tab id → ViewManager in BrowserController
-4. **View switching**: Detach inactive views, attach active view to `win.contentView`
-5. **IPC extension**: Add optional `tabId` to NavCommand and NavState
-6. **UI component**: Add a tab strip component above the toolbar
+Astra now supports full multi-tab browsing with an Arc-inspired vertical sidebar. Each tab is an independent browsing session with its own WebContentsView, navigation history, and state.
+
+### Tab Model (`src/main/tabs/Tab.ts`)
+
+Each tab is represented by a `Tab` class that extends `EventEmitter`:
+
+- **Properties**:
+  - `id`: Unique identifier (UUID)
+  - `view`: WebContentsView instance for rendering web content
+  - `viewManager`: ViewManager instance for layout management
+  - `meta`: TabMeta object containing title, URL, favicon, loading state, and active state
+
+- **Lifecycle Methods**:
+  - `attach(win, frame)`: Adds view to window with proper bounds considering UI margins
+  - `detach(win)`: Removes view from window
+  - `destroy()`: Cleans up listeners and destroys webContents
+
+- **Navigation Methods**: `loadURL()`, `goBack()`, `goForward()`, `reload()`, `stop()`
+
+- **Event Handling**: Listens to webContents events (did-navigate, page-title-updated, page-favicon-updated, etc.) and emits "updated" events
+
+### Tab Management (`src/main/tabs/TabManager.ts`)
+
+The `TabManager` class orchestrates all tabs for a window:
+
+- **Responsibilities**:
+  - Maintains `Map<id, Tab>` of all tabs and their order
+  - Tracks `activeTabId` and manages view attachment/detachment
+  - Broadcasts state changes to renderer via debounced events (16ms)
+
+- **Key Methods**:
+  - `createTab(url?)`: Creates new tab and switches to it
+  - `closeTab(id)`: Closes tab with minimum-1-tab rule (auto-creates replacement)
+  - `switchTab(id)`: Detaches current, attaches target tab
+  - `nextTab()` / `prevTab()`: Cycle through tabs
+  - `switchToIndex(n)`: Jump to specific tab position
+  - `updateFrame(frame)`: Updates UI margins for active tab layout
+  - `handleNavCommand(cmd)`: Routes navigation commands to appropriate tab
+  - `handleTabCommand(cmd)`: Handles tab management commands
+
+- **Smart Tab Closing**: When closing active tab, selects previous neighbor (or next if no previous)
+
+### ViewManager Enhancements (`src/main/browser/ViewManager.ts`)
+
+Updated to support tab switching with UI margins:
+
+- `setFrame(frame)`: Stores `{ top, left }` UI margins
+- `attach(win)` / `detach(win)`: Manages view lifecycle
+- `applyLayout(win)`: Computes bounds as:
+  - `x = frame.left`, `y = frame.top`
+  - `width = windowWidth - frame.left`
+  - `height = windowHeight - frame.top`
+
+### Extended IPC Contract (`src/common/ipc.ts`)
+
+**New Types**:
+- `TabId`: String identifier for tabs
+- `TabMeta`: Tab metadata (id, title, url, favicon, isLoading, isActive)
+- `TabState`: Complete tabs state (tabs array, activeId, order)
+- `TabCommand`: Union of tab actions (create, close, switch, next, prev, switchToIndex)
+- `UIFrame`: UI margins `{ top, left }`
+
+**Extended Types**:
+- `NavCommand`: Now accepts optional `tabId` parameter
+- `NavState`: Now includes optional `tabId`
+
+**New Channels**:
+- `tab:command`: Tab management commands from renderer
+- `tab:state`: Tab state broadcasts to renderer
+- `ui:set-frame`: UI frame dimensions from renderer
+
+### Renderer Integration
+
+**Sidebar Component (`src/components/Sidebar.tsx`)**:
+- Vertical tab list (Arc-style)
+- New tab button at top
+- Scrollable tab cards with favicon, title, URL, and close button
+- Active tab highlighting with accent bar
+
+**TabCard Component (`src/components/TabCard.tsx`)**:
+- Compact card showing tab state
+- Favicon (or placeholder)
+- Title and hostname display
+- Close button (hidden until hover, always visible for active tab)
+- Loading indicator animation
+
+**App Integration (`src/App.tsx`)**:
+- Subscribes to `tabs:state` and `nav:state` channels
+- Reports UI frame dimensions (`{ top: 49, left: 240 }`) to main process
+- Keyboard shortcuts:
+  - **Cmd/Ctrl+T**: New tab
+  - **Cmd/Ctrl+W**: Close tab
+  - **Cmd/Ctrl+Tab** / **Cmd/Ctrl+Shift+Tab**: Next/Previous tab
+  - **Cmd/Ctrl+1-9**: Jump to tab by position
+  - **Cmd/Ctrl+Shift+[** / **]**: Previous/Next tab
+
+**Layout**: 
+- Root: Flex row (sidebar + main area)
+- Sidebar: Fixed 240px width, full height
+- Main area: Flex-grow with toolbar at top (49px height)
+
+### Styling
+
+**Arc-Inspired Design (`src/styles/sidebar.css`)**:
+- Clean, minimal vertical sidebar
+- Tab cards with rounded corners (10px), subtle hover states
+- Active tab: White background (light mode), shadow, left accent bar in brand color (#007aff)
+- Smooth transitions (0.15s)
+- Custom scrollbar (6px, rounded)
+- Dark mode support via `prefers-color-scheme`
+- Slide-in animation for new tabs
+
+### Performance Optimizations
+
+- **Debounced State Broadcasts**: TabManager debounces state updates (16ms) to avoid excessive IPC
+- **Lazy View Attachment**: Only active tab's view is attached to window; inactive tabs are detached
+- **Proper Cleanup**: Tabs destroy webContents and remove all listeners when closed
