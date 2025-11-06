@@ -57,6 +57,9 @@ export class BrowserController {
     // Register ready-to-show before loading to ensure we catch the event
     this.win.once('ready-to-show', () => {
       this.win.show();
+      // Open DevTools in separate windows
+      this.win.webContents.openDevTools({ mode: 'detach' });
+      this.view.webContents.openDevTools({ mode: 'detach' });
       // Delay initial navigation to allow toolbar to report its height first
       setTimeout(() => {
         this.navigate('https://www.google.com');

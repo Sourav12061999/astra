@@ -16,11 +16,17 @@ export default function App() {
 
   useEffect(() => {
     // Subscribe to navigation state updates
+    if (!window.api) {
+      console.error('window.api is undefined; preload script may have failed to load');
+      return;
+    }
+
     const unsubscribe = window.api.onNavState((state) => {
       setNavState(state);
       // Always update input value with current URL
       // Only skip if user is actively typing (we'll handle this differently)
       setInputValue(state.url);
+      console.log('Nav state updated:', state);
     });
 
     // Measure and report toolbar height
