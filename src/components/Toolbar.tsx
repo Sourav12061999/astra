@@ -14,6 +14,8 @@ interface ToolbarProps {
   onForward: () => void;
   onReload: () => void;
   onStop: () => void;
+  onToggleAI?: () => void;
+  isAIChatOpen?: boolean;
 }
 
 export default function Toolbar({
@@ -28,7 +30,9 @@ export default function Toolbar({
   onBack,
   onForward,
   onReload,
-  onStop
+  onStop,
+  onToggleAI,
+  isAIChatOpen
 }: ToolbarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -96,6 +100,17 @@ export default function Toolbar({
         />
         <LoadingIndicator isLoading={isLoading} />
       </form>
+
+      {onToggleAI && (
+        <button
+          className={`ai-button ${isAIChatOpen ? 'active' : ''}`}
+          onClick={onToggleAI}
+          title="AI Agent (Cmd/Ctrl+K)"
+          aria-label="Toggle AI Agent"
+        >
+          🤖
+        </button>
+      )}
     </div>
   );
 }

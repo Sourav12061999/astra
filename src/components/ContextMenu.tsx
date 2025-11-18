@@ -110,7 +110,7 @@ export default function ContextMenu({
           });
           break;
 
-        case 'Enter':
+        case 'Enter': {
           e.preventDefault();
           const item = items[focusedIndex];
           if (item && !item.separator && !item.disabled && item.action) {
@@ -118,6 +118,7 @@ export default function ContextMenu({
             onClose();
           }
           break;
+        }
       }
     };
 

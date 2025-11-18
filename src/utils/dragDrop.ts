@@ -18,7 +18,7 @@ export interface DropPosition {
 export function setCustomDragImage(
   event: React.DragEvent,
   element: HTMLElement,
-  scale: number = 0.7
+  scale = 0.7
 ): void {
   const clone = element.cloneNode(true) as HTMLElement;
   clone.style.opacity = String(scale);
@@ -65,7 +65,7 @@ export function getDragData(event: React.DragEvent): DragData | null {
 export function getDropPosition(
   event: React.DragEvent,
   targetElement: HTMLElement,
-  allowInside: boolean = false
+  allowInside = false
 ): 'before' | 'after' | 'inside' {
   const rect = targetElement.getBoundingClientRect();
   const mouseY = event.clientY;
@@ -104,7 +104,7 @@ export function isPinnedAreaTarget(element: HTMLElement): boolean {
  */
 export function throttleDragOver<T extends (...args: any[]) => void>(
   func: T,
-  delay: number = 50
+  delay = 50
 ): T {
   let lastCall = 0;
   return ((...args: Parameters<T>) => {

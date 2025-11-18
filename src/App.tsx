@@ -2,10 +2,12 @@ import { useEffect, useState, useRef } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import Toolbar from './components/Toolbar';
 import Sidebar from './components/Sidebar';
+import AIChat from './components/AIChat';
 import { storage } from './utils/storage';
 import './styles/app.css';
 import './styles/sidebar.css';
 import './styles/animations.css';
+import './styles/ai-chat.css';
 import { TabState } from './common/ipc';
 
 const TOOLBAR_HEIGHT = 49;
@@ -32,6 +34,7 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     return storage.get<boolean>('ui.sidebarCollapsed', false) || false;
   });
+  const [aiChatOpen, setAiChatOpen] = useState(false);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
@@ -104,6 +107,10 @@ export default function App() {
 
   const toggleSidebar = () => {
     setSidebarCollapsed(prev => !prev);
+  };
+
+  const toggleAIChat = () => {
+    setAiChatOpen(prev => !prev);
   };
 
   // Keyboard shortcuts with react-hotkeys-hook
@@ -240,6 +247,12 @@ export default function App() {
     window.api.app.closeWindow();
   }, []);
 
+  // Toggle AI Chat
+  useHotkeys('mod+k', (e) => {
+    e.preventDefault();
+    toggleAIChat();
+  }, []);
+
   return (
     <>
       <div ref={sidebarRef}>
@@ -269,9 +282,13 @@ export default function App() {
             onForward={() => window.api.nav.goForward()}
             onReload={() => window.api.nav.reload()}
             onStop={() => window.api.nav.stop()}
+            onToggleAI={toggleAIChat}
+            isAIChatOpen={aiChatOpen}
           />
         </div>
       </div>
+
+      <AIChat isOpen={aiChatOpen} onClose={() => setAiChatOpen(false)} />
     </>
   );
 }

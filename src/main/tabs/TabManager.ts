@@ -138,7 +138,11 @@ export class TabManager extends EventEmitter {
           url: '',
           favicon: null,
           isLoading: false,
-          isActive: false
+          isActive: false,
+          isPinned: false,
+          isMuted: false,
+          hasAudio: false,
+          groupId: null
         };
       }
       return {
@@ -150,7 +154,10 @@ export class TabManager extends EventEmitter {
     return {
       tabs,
       activeId: this.activeTabId,
-      order: [...this.order]
+      order: [...this.order],
+      groups: [],
+      pinnedOrder: [],
+      recentlyClosed: []
     };
   }
 

@@ -2,7 +2,8 @@ import path from 'node:path';
 import { app, ipcMain, Menu, BrowserWindow } from 'electron';
 import started from 'electron-squirrel-startup';
 import { BrowserController } from './browser/BrowserController';
-import { IPC_CHANNELS, NavCommand, TabCommand, UIFrame } from '../common/ipc';
+import { IPC_CHANNELS, NavCommand, TabCommand, UIFrame, AIAgentRequest, AIAgentResponse } from '../common/ipc';
+import { AIAgent } from './ai/AIAgent';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -24,8 +25,22 @@ function indexHtmlOrDevURL() {
 }
 
 let controller: BrowserController;
+let aiAgent: AIAgent | null = null;
+
+// Initialize AI Agent with API key from environment variable or config
+// Users will need to set their GOOGLE_GEMINI_API_KEY environment variable
+const initializeAIAgent = (apiKey?: string) => {
+  const key = apiKey || process.env.GOOGLE_GEMINI_API_KEY;
+  if (key) {
+    aiAgent = new AIAgent(key);
+    return true;
+  }
+  return false;
+};
 
 app.whenReady().then(async () => {
+  // Try to initialize AI Agent
+  initializeAIAgent();
   controller = new BrowserController(uiPreloadPath());
   await controller.ready(indexHtmlOrDevURL());
 
@@ -77,4 +92,22 @@ ipcMain.handle(IPC_CHANNELS.tabCommand, (_evt, cmd: TabCommand) => {
 
 ipcMain.handle(IPC_CHANNELS.uiSetFrame, (_evt, frame: UIFrame) => {
   controller.handleUISetFrame(frame);
+});
+
+ipcMain.handle(IPC_CHANNELS.aiSetApiKey, (_evt, apiKey: string) => {
+  return initializeAIAgent(apiKey);
+});
+
+ipcMain.handle(IPC_CHANNELS.aiAgent, async (_evt, request: AIAgentRequest): Promise<AIAgentResponse> => {
+  if (!aiAgent) {
+    throw new Error('AI Agent not initialized. Please set your Google Gemini API key.');
+  }
+  
+  try {
+    const response = await aiAgent.processPrompt(request.prompt, request.conversationHistory || []);
+    return response;
+  } catch (error) {
+    console.error('AI Agent error:', error);
+    throw error;
+  }
 });
