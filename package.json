@@ -46,9 +46,15 @@
     "vite": "^5.0.12"
   },
   "dependencies": {
+    "@ai-sdk/google": "^2.0.34",
+    "ai": "^5.0.93",
+    "axios": "^1.13.2",
+    "cheerio": "^1.1.2",
     "electron-squirrel-startup": "^1.0.1",
+    "google-auth-library": "^10.5.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-hotkeys-hook": "^5.2.1"
+    "react-hotkeys-hook": "^5.2.1",
+    "zod": "^4.1.12"
   }
 }

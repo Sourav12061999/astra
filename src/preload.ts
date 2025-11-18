@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { IPC_CHANNELS, NavCommand, NavState, TabCommand, TabState, UIFrame, AppCommand, GroupColor } from './common/ipc';
+import { IPC_CHANNELS, NavCommand, NavState, TabCommand, TabState, UIFrame, AppCommand, GroupColor, AIAgentRequest, AIAgentResponse } from './common/ipc';
 
 const api = {
   nav: {
@@ -78,6 +78,12 @@ const api = {
   app: {
     closeWindow: () => 
       ipcRenderer.invoke(IPC_CHANNELS.appCommand, { type: 'closeWindow' } as AppCommand)
+  },
+  ai: {
+    sendPrompt: (request: AIAgentRequest) => 
+      ipcRenderer.invoke(IPC_CHANNELS.aiAgent, request) as Promise<AIAgentResponse>,
+    setApiKey: (apiKey: string) => 
+      ipcRenderer.invoke(IPC_CHANNELS.aiSetApiKey, apiKey) as Promise<boolean>
   }
 };
 

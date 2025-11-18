@@ -69,6 +69,34 @@ export type TabCommand =
 
 export type AppCommand = { type: 'closeWindow' };
 
+export type AIAgentMessage = {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+};
+
+export type AISearchResult = {
+  title: string;
+  url: string;
+  snippet: string;
+};
+
+export type AIPageContent = {
+  url: string;
+  title: string;
+  content: string;
+};
+
+export type AIAgentRequest = {
+  prompt: string;
+  conversationHistory?: AIAgentMessage[];
+};
+
+export type AIAgentResponse = {
+  response: string;
+  searches: AISearchResult[];
+  visitedPages: AIPageContent[];
+};
+
 export type TabMeta = {
   id: TabId;
   title: string;
@@ -103,7 +131,9 @@ export const IPC_CHANNELS = {
   tabCommand: 'tab:command',
   tabState: 'tab:state',
   uiSetFrame: 'ui:set-frame',
-  appCommand: 'app:command'
+  appCommand: 'app:command',
+  aiAgent: 'ai:agent',
+  aiSetApiKey: 'ai:set-api-key'
 } as const;
 
 export type Channels = typeof IPC_CHANNELS;
