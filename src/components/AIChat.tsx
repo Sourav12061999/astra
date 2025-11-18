@@ -111,7 +111,7 @@ export default function AIChat({ isOpen, onClose }: AIChatProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="ai-chat-overlay">
+    <div className="sidebar">
       <div className="ai-chat-panel">
         <div className="ai-chat-header">
           <div className="ai-chat-title">

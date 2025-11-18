@@ -31,9 +31,8 @@ export default function App() {
     recentlyClosed: []
   });
   const [inputValue, setInputValue] = useState('');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    return storage.get<boolean>('ui.sidebarCollapsed', false) || false;
-  });
+  // Sidebar is always open
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -56,7 +55,7 @@ export default function App() {
 
     // Report UI frame dimensions
     const reportFrame = () => {
-      const sidebarWidth = sidebarCollapsed ? 0 : SIDEBAR_WIDTH;
+      const sidebarWidth =  SIDEBAR_WIDTH; // Sidebar is always open
       window.api.ui.setFrame({
         top: TOOLBAR_HEIGHT,
         left: sidebarWidth
@@ -76,18 +75,18 @@ export default function App() {
       unsubscribeTabs();
       window.removeEventListener('resize', reportFrame);
     };
-  }, [sidebarCollapsed]);
+  }, []);
 
-  // Persist sidebar collapsed state
+  // Persist sidebar collapsed state (but always open)
   useEffect(() => {
-    storage.setImmediate('ui.sidebarCollapsed', sidebarCollapsed);
+    storage.setImmediate('ui.sidebarCollapsed', false);
     // Update UI frame when sidebar toggles
-    const sidebarWidth = sidebarCollapsed ? 0 : SIDEBAR_WIDTH;
+    const sidebarWidth = SIDEBAR_WIDTH;
     window.api.ui.setFrame({
       top: TOOLBAR_HEIGHT,
       left: sidebarWidth
     });
-  }, [sidebarCollapsed]);
+  }, []);
 
   const handleSubmit = () => {
     window.api.nav.loadURL(inputValue);
@@ -105,9 +104,8 @@ export default function App() {
     window.api.tabs.close(tabId);
   };
 
-  const toggleSidebar = () => {
-    setSidebarCollapsed(prev => !prev);
-  };
+  // Sidebar always open, so this does nothing
+  const toggleSidebar = () => {};
 
   const toggleAIChat = () => {
     setAiChatOpen(prev => !prev);
@@ -176,20 +174,20 @@ export default function App() {
     }
   }, [navState.isLoading]);
 
-  // Sidebar toggle
+  // Sidebar toggle (shortcut does nothing)
   useHotkeys('mod+b', (e) => {
     e.preventDefault();
-    toggleSidebar();
+    // Sidebar cannot be toggled
   }, []);
 
   useHotkeys('mod+alt+]', (e) => {
     e.preventDefault();
-    setSidebarCollapsed(false);
+    // Sidebar cannot be toggled
   }, []);
 
   useHotkeys('mod+alt+[', (e) => {
     e.preventDefault();
-    setSidebarCollapsed(true);
+    // Sidebar cannot be toggled
   }, []);
 
   // Enhanced tab operations
@@ -259,7 +257,7 @@ export default function App() {
         <Sidebar
           tabs={tabsState.tabs}
           activeId={tabsState.activeId}
-          collapsed={sidebarCollapsed}
+          collapsed={false}
           onToggleCollapse={toggleSidebar}
           onCreate={handleCreateTab}
           onSelect={handleSwitchTab}
@@ -288,7 +286,9 @@ export default function App() {
         </div>
       </div>
 
+      <div className='sidebar'>
       <AIChat isOpen={aiChatOpen} onClose={() => setAiChatOpen(false)} />
+      </div>
     </>
   );
 }
