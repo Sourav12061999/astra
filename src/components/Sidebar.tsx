@@ -4,6 +4,8 @@ import { TabMeta } from '../common/ipc';
 interface SidebarProps {
   tabs: TabMeta[];
   activeId: string | null;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
   onCreate: () => void;
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
@@ -12,13 +14,23 @@ interface SidebarProps {
 export default function Sidebar({
   tabs,
   activeId,
+  collapsed,
+  onToggleCollapse,
   onCreate,
   onSelect,
   onClose
 }: SidebarProps) {
   return (
-    <div className="sidebar">
+    <div className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-header">
+        <button 
+          className="sidebar-toggle-btn"
+          onClick={onToggleCollapse}
+          title="Toggle Sidebar (Cmd/Ctrl+B)"
+          aria-label="Toggle Sidebar"
+        >
+          ☰
+        </button>
         <button 
           className="new-tab-btn"
           onClick={onCreate}

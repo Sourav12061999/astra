@@ -1,0 +1,225 @@
+/* Animation keyframes and transitions */
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Staggered children animations */
+@keyframes staggerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Drop zone highlight animations */
+@keyframes dropHighlight {
+  0%, 100% {
+    border-color: var(--tab-accent);
+  }
+  50% {
+    border-color: var(--tab-accent);
+    box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.2);
+  }
+}
+
+/* Collapse/expand animations */
+.collapse-enter {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.collapse-enter-active {
+  max-height: 1000px;
+  opacity: 1;
+  transition: max-height 300ms ease-out, opacity 200ms ease-out;
+}
+
+.collapse-exit {
+  max-height: 1000px;
+  opacity: 1;
+  overflow: hidden;
+}
+
+.collapse-exit-active {
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 300ms ease-in, opacity 200ms ease-in;
+}
+
+/* Loading skeleton */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--tab-hover-bg) 0%,
+    var(--tab-active-bg) 50%,
+    var(--tab-hover-bg) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+.skeleton-text {
+  height: 14px;
+  margin-bottom: 4px;
+}
+
+.skeleton-text-small {
+  height: 11px;
+  width: 60%;
+}
+
+/* Drop indicators */
+.drop-target {
+  position: relative;
+}
+
+.drop-target[data-drop-position="before"]::before,
+.drop-target[data-drop-position="after"]::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--tab-accent);
+  animation: dropHighlight 0.5s ease-in-out;
+  z-index: 100;
+}
+
+.drop-target[data-drop-position="before"]::before {
+  top: -1px;
+}
+
+.drop-target[data-drop-position="after"]::after {
+  bottom: -1px;
+}
+
+.drop-target[data-drop-position="inside"] {
+  background: rgba(10, 132, 255, 0.08) !important;
+  border: 2px solid var(--tab-accent) !important;
+  animation: dropHighlight 0.5s ease-in-out;
+}
+
+/* Smooth scrolling */
+.smooth-scroll {
+  scroll-behavior: smooth;
+}
+
+/* Utility animations */
+.fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.slide-in {
+  animation: slideIn 0.2s ease-out;
+}
+
+.slide-up {
+  animation: slideUp 0.15s ease-out;
+}
+
+.slide-down {
+  animation: slideDown 0.15s ease-out;
+}
+
+.scale-in {
+  animation: scaleIn 0.15s ease-out;
+}
+
+/* Hover scale effect */
+.hover-scale {
+  transition: transform 0.15s ease;
+}
+
+.hover-scale:hover {
+  transform: scale(1.02);
+}
+
+/* Hover elevate effect */
+.hover-elevate {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hover-elevate:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}

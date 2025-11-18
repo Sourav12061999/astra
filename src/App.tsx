@@ -1,8 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
+import { useHotkeys } from 'react-hotkeys-hook';
 import Toolbar from './components/Toolbar';
 import Sidebar from './components/Sidebar';
+import { storage } from './utils/storage';
 import './styles/app.css';
 import './styles/sidebar.css';
+import './styles/animations.css';
 import { TabState } from './common/ipc';
 
 const TOOLBAR_HEIGHT = 49;
@@ -20,10 +23,17 @@ export default function App() {
   const [tabsState, setTabsState] = useState<TabState>({
     tabs: [],
     activeId: null,
-    order: []
+    order: [],
+    groups: [],
+    pinnedOrder: [],
+    recentlyClosed: []
   });
   const [inputValue, setInputValue] = useState('');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    return storage.get<boolean>('ui.sidebarCollapsed', false) || false;
+  });
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const sidebarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Subscribe to navigation state updates
@@ -43,9 +53,10 @@ export default function App() {
 
     // Report UI frame dimensions
     const reportFrame = () => {
+      const sidebarWidth = sidebarCollapsed ? 0 : SIDEBAR_WIDTH;
       window.api.ui.setFrame({
         top: TOOLBAR_HEIGHT,
-        left: SIDEBAR_WIDTH
+        left: sidebarWidth
       });
     };
     
@@ -57,91 +68,23 @@ export default function App() {
       (window as any).focusOmnibox?.();
     }, 100);
 
-    // Keyboard shortcuts
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-      const cmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
-
-      // Cmd/Ctrl + T: New tab
-      if (cmdOrCtrl && e.key === 't') {
-        e.preventDefault();
-        window.api.tabs.create();
-        return;
-      }
-
-      // Cmd/Ctrl + W: Close tab
-      if (cmdOrCtrl && e.key === 'w') {
-        e.preventDefault();
-        if (tabsState.activeId) {
-          window.api.tabs.close(tabsState.activeId);
-        }
-        return;
-      }
-
-      // Cmd/Ctrl + Tab: Next tab
-      if (cmdOrCtrl && e.key === 'Tab' && !e.shiftKey) {
-        e.preventDefault();
-        window.api.tabs.next();
-        return;
-      }
-
-      // Cmd/Ctrl + Shift + Tab: Previous tab
-      if (cmdOrCtrl && e.key === 'Tab' && e.shiftKey) {
-        e.preventDefault();
-        window.api.tabs.prev();
-        return;
-      }
-
-      // Cmd/Ctrl + Shift + [ or ]: Previous/Next tab
-      if (cmdOrCtrl && e.shiftKey && e.key === '[') {
-        e.preventDefault();
-        window.api.tabs.prev();
-        return;
-      }
-      if (cmdOrCtrl && e.shiftKey && e.key === ']') {
-        e.preventDefault();
-        window.api.tabs.next();
-        return;
-      }
-
-      // Cmd/Ctrl + 1-9: Switch to tab by index
-      if (cmdOrCtrl && e.key >= '1' && e.key <= '9') {
-        e.preventDefault();
-        const index = parseInt(e.key) - 1;
-        window.api.tabs.switchToIndex(index);
-        return;
-      }
-
-      // Cmd/Ctrl + L: Focus omnibox
-      if (cmdOrCtrl && e.key === 'l') {
-        e.preventDefault();
-        (window as any).focusOmnibox?.();
-        return;
-      }
-
-      // Cmd/Ctrl + R: Reload
-      if (cmdOrCtrl && e.key === 'r') {
-        e.preventDefault();
-        window.api.nav.reload();
-        return;
-      }
-
-      // Escape: Stop loading
-      if (e.key === 'Escape' && navState.isLoading) {
-        window.api.nav.stop();
-        return;
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-
     return () => {
       unsubscribeNav();
       unsubscribeTabs();
       window.removeEventListener('resize', reportFrame);
-      document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [navState.isLoading, tabsState.activeId]);
+  }, [sidebarCollapsed]);
+
+  // Persist sidebar collapsed state
+  useEffect(() => {
+    storage.setImmediate('ui.sidebarCollapsed', sidebarCollapsed);
+    // Update UI frame when sidebar toggles
+    const sidebarWidth = sidebarCollapsed ? 0 : SIDEBAR_WIDTH;
+    window.api.ui.setFrame({
+      top: TOOLBAR_HEIGHT,
+      left: sidebarWidth
+    });
+  }, [sidebarCollapsed]);
 
   const handleSubmit = () => {
     window.api.nav.loadURL(inputValue);
@@ -159,15 +102,157 @@ export default function App() {
     window.api.tabs.close(tabId);
   };
 
+  const toggleSidebar = () => {
+    setSidebarCollapsed(prev => !prev);
+  };
+
+  // Keyboard shortcuts with react-hotkeys-hook
+  // Basic tab operations
+  useHotkeys('mod+t', (e) => {
+    e.preventDefault();
+    window.api.tabs.create();
+  }, []);
+
+  useHotkeys('mod+w', (e) => {
+    e.preventDefault();
+    if (tabsState.activeId) {
+      window.api.tabs.close(tabsState.activeId);
+    }
+  }, [tabsState.activeId]);
+
+  useHotkeys('mod+tab', (e) => {
+    e.preventDefault();
+    window.api.tabs.next();
+  }, []);
+
+  useHotkeys('mod+shift+tab', (e) => {
+    e.preventDefault();
+    window.api.tabs.prev();
+  }, []);
+
+  useHotkeys('mod+shift+[', (e) => {
+    e.preventDefault();
+    window.api.tabs.prev();
+  }, []);
+
+  useHotkeys('mod+shift+]', (e) => {
+    e.preventDefault();
+    window.api.tabs.next();
+  }, []);
+
+  // Switch to tab by number
+  useHotkeys('mod+1', (e) => { e.preventDefault(); window.api.tabs.switchToIndex(0); }, []);
+  useHotkeys('mod+2', (e) => { e.preventDefault(); window.api.tabs.switchToIndex(1); }, []);
+  useHotkeys('mod+3', (e) => { e.preventDefault(); window.api.tabs.switchToIndex(2); }, []);
+  useHotkeys('mod+4', (e) => { e.preventDefault(); window.api.tabs.switchToIndex(3); }, []);
+  useHotkeys('mod+5', (e) => { e.preventDefault(); window.api.tabs.switchToIndex(4); }, []);
+  useHotkeys('mod+6', (e) => { e.preventDefault(); window.api.tabs.switchToIndex(5); }, []);
+  useHotkeys('mod+7', (e) => { e.preventDefault(); window.api.tabs.switchToIndex(6); }, []);
+  useHotkeys('mod+8', (e) => { e.preventDefault(); window.api.tabs.switchToIndex(7); }, []);
+  useHotkeys('mod+9', (e) => { e.preventDefault(); window.api.tabs.switchToIndex(8); }, []);
+
+  // Navigation
+  useHotkeys('mod+l', (e) => {
+    e.preventDefault();
+    (window as any).focusOmnibox?.();
+  }, []);
+
+  useHotkeys('mod+r', (e) => {
+    e.preventDefault();
+    window.api.nav.reload();
+  }, []);
+
+  useHotkeys('escape', (e) => {
+    if (navState.isLoading) {
+      e.preventDefault();
+      window.api.nav.stop();
+    }
+  }, [navState.isLoading]);
+
+  // Sidebar toggle
+  useHotkeys('mod+b', (e) => {
+    e.preventDefault();
+    toggleSidebar();
+  }, []);
+
+  useHotkeys('mod+alt+]', (e) => {
+    e.preventDefault();
+    setSidebarCollapsed(false);
+  }, []);
+
+  useHotkeys('mod+alt+[', (e) => {
+    e.preventDefault();
+    setSidebarCollapsed(true);
+  }, []);
+
+  // Enhanced tab operations
+  useHotkeys('mod+d', (e) => {
+    e.preventDefault();
+    if (tabsState.activeId) {
+      window.api.tabs.duplicate(tabsState.activeId);
+    }
+  }, [tabsState.activeId]);
+
+  useHotkeys('mod+shift+t', (e) => {
+    e.preventDefault();
+    window.api.tabs.reopenLastClosed();
+  }, []);
+
+  useHotkeys('mod+p', (e) => {
+    e.preventDefault();
+    if (tabsState.activeId) {
+      window.api.tabs.togglePin(tabsState.activeId);
+    }
+  }, [tabsState.activeId]);
+
+  useHotkeys('mod+shift+m', (e) => {
+    e.preventDefault();
+    if (tabsState.activeId) {
+      window.api.tabs.toggleMute(tabsState.activeId);
+    }
+  }, [tabsState.activeId]);
+
+  // Group operations
+  useHotkeys('mod+shift+g', (e) => {
+    e.preventDefault();
+    if (tabsState.activeId) {
+      window.api.tabs.createGroup('New Group', 'blue', [tabsState.activeId]);
+    }
+  }, [tabsState.activeId]);
+
+  useHotkeys('mod+shift+u', (e) => {
+    e.preventDefault();
+    const activeTab = tabsState.tabs.find(t => t.id === tabsState.activeId);
+    if (activeTab?.groupId) {
+      window.api.tabs.moveToGroup(activeTab.id, null);
+    }
+  }, [tabsState.activeId, tabsState.tabs]);
+
+  // Tab search
+  useHotkeys('mod+f', (e) => {
+    e.preventDefault();
+    (window as any).focusTabSearch?.();
+  }, []);
+
+  // Close window
+  useHotkeys('mod+shift+w', (e) => {
+    e.preventDefault();
+    window.api.app.closeWindow();
+  }, []);
+
   return (
     <>
-      <Sidebar
-        tabs={tabsState.tabs}
-        activeId={tabsState.activeId}
-        onCreate={handleCreateTab}
-        onSelect={handleSwitchTab}
-        onClose={handleCloseTab}
-      />
+      <div ref={sidebarRef}>
+        <Sidebar
+          tabs={tabsState.tabs}
+          activeId={tabsState.activeId}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={toggleSidebar}
+          onCreate={handleCreateTab}
+          onSelect={handleSwitchTab}
+          onClose={handleCloseTab}
+        />
+      </div>
       
       <div className="app-main">
         <div ref={toolbarRef}>

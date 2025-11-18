@@ -36,7 +36,11 @@ export class Tab extends EventEmitter {
       url: defaultURL || '',
       favicon: null,
       isLoading: false,
-      isActive: false
+      isActive: false,
+      isPinned: false,
+      isMuted: false,
+      hasAudio: false,
+      groupId: null
     };
 
     // Set window open handler for this tab
@@ -95,6 +99,17 @@ export class Tab extends EventEmitter {
       this.emit('updated', this.meta);
     });
 
+    // Audio events
+    wc.on('media-started-playing', () => {
+      this._meta.hasAudio = true;
+      this.emit('updated', this.meta);
+    });
+
+    wc.on('media-paused', () => {
+      this._meta.hasAudio = false;
+      this.emit('updated', this.meta);
+    });
+
     wc.on('destroyed', () => {
       this.destroyed = true;
     });
@@ -116,6 +131,30 @@ export class Tab extends EventEmitter {
 
   setActive(active: boolean) {
     this._meta.isActive = active;
+  }
+
+  setPinned(pinned: boolean) {
+    this._meta.isPinned = pinned;
+    this.emit('updated', this.meta);
+  }
+
+  setGroupId(groupId: string | null) {
+    this._meta.groupId = groupId;
+    this.emit('updated', this.meta);
+  }
+
+  toggleMute() {
+    if (this.destroyed) return;
+    this._meta.isMuted = !this._meta.isMuted;
+    this.webContents.setAudioMuted(this._meta.isMuted);
+    this.emit('updated', this.meta);
+  }
+
+  setMuted(muted: boolean) {
+    if (this.destroyed) return;
+    this._meta.isMuted = muted;
+    this.webContents.setAudioMuted(muted);
+    this.emit('updated', this.meta);
   }
 
   loadURL(urlOrQuery: string) {
